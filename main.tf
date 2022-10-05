@@ -330,3 +330,21 @@ resource "aws_db_instance" "patrimonio_db" {
 }
 
 
+resource "aws_s3_bucket" "patrimonio_s3_bucket" {
+    bucket = "patrimonio-w1p30qp8y4iyn7cv"
+    acl = "public-read"
+}
+
+resource "aws_s3_bucket_policy" "patrimonio_s3_external_access_policy" {
+    bucket = aws_s3_bucket.patrimonio_s3_bucket.id
+    policy = file("${path.module}/s3-public-bucket.json")
+}
+
+resource "aws_ami_from_instance" "webserver_ami" {
+    name = "webserver_ami"
+    source_instance_id = aws_instance.vm_2.id
+}
+
+data "aws_instance" "webserver_instance" {
+    instance_id = aws_instance.vm_2.id
+}
