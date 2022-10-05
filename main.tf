@@ -305,28 +305,28 @@ resource "aws_instance" "vm_2" {
     }
 }
 
-# resource "aws_db_subnet_group" "patrimonio_db_subnet_group" {
-#     name = "patrimonio_db_subnet_group" 
-#     subnet_ids = [ aws_subnet.public_subnet.id, aws_subnet.private_subnet.id ]
+resource "aws_db_subnet_group" "patrimonio_db_subnet_group" {
+    name = "patrimonio_db_subnet_group" 
+    subnet_ids = [ aws_subnet.public_subnet.id, aws_subnet.private_subnet.id ]
 
-#     tags = {
-#         Name = "Patrimonio DB Subnet group"
-#     }
+    tags = {
+        Name = "Patrimonio DB Subnet group"
+    }
 
-# }
+}
 
-# resource "aws_db_instance" "patrimonio_db" {
-#     allocated_storage    = var.db.size
-#     db_name              = var.db.name
-#     identifier           = var.db.name
-#     engine               = var.db.engine
-#     engine_version       = var.db.version
-#     instance_class       = var.db.instance
-#     username             = var.db.user
-#     password             = var.db.password
-#     skip_final_snapshot  = true
-#     vpc_security_group_ids = [ aws_security_group.rds_sg.id ]
-#     db_subnet_group_name = aws_db_subnet_group.patrimonio_db_subnet_group.name
-# }
+resource "aws_db_instance" "patrimonio_db" {
+    allocated_storage    = var.db.size
+    db_name              = var.db.name
+    identifier           = var.db.name
+    engine               = var.db.engine
+    engine_version       = var.db.version
+    instance_class       = var.db.instance
+    username             = var.db.user
+    password             = var.db.password
+    skip_final_snapshot  = true
+    vpc_security_group_ids = [ aws_security_group.rds_sg.id ]
+    db_subnet_group_name = aws_db_subnet_group.patrimonio_db_subnet_group.name
+}
 
 
