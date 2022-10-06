@@ -17,7 +17,7 @@ resource "aws_vpc" "default_vpc" {
 resource "aws_subnet" "public_subnet" {
     vpc_id = aws_vpc.default_vpc.id
     cidr_block = "10.41.10.0/24"
-    availability_zone = "us-east-1b"
+    availability_zone = "us-east-1a"
 
     tags = {
         Name = "public-subnet"
@@ -26,13 +26,35 @@ resource "aws_subnet" "public_subnet" {
     map_public_ip_on_launch = true
 }
 
-resource "aws_subnet" "private_subnet" {
+resource "aws_subnet" "public_subnet_2" {
     vpc_id = aws_vpc.default_vpc.id
     cidr_block = "10.41.11.0/24"
-    availability_zone = "us-east-1c"
+    availability_zone = "us-east-1b"
+
+    tags = {
+        Name = "public-subnet-2"
+    }
+
+    map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "private_subnet" {
+    vpc_id = aws_vpc.default_vpc.id
+    cidr_block = "10.41.1.0/24"
+    availability_zone = "us-east-1a"
 
     tags = {
       Name = "private-subnet"
+    }
+}
+
+resource "aws_subnet" "private_subnet_2" {
+    vpc_id = aws_vpc.default_vpc.id
+    cidr_block = "10.41.2.0/24"
+    availability_zone = "us-east-1b"
+
+    tags = {
+      Name = "private-subnet-2"
     }
 }
 
@@ -61,6 +83,23 @@ resource "aws_route_table" "default_table" {
     }
 }
 
+resource "aws_route_table" "default_table_2" {
+    vpc_id = aws_vpc.default_vpc.id
+
+    # route {
+    #     cidr_block = "10.41.0.0/16"
+    #     gateway_id = aws_internet_gateway.gateway_teste.id
+    # }
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.gateway_teste.id
+    } 
+
+    tags = {
+        Name = "default-route-table-2"
+    }
+}
+
 resource "aws_route_table_association" "route_table_public" {
     subnet_id = aws_subnet.public_subnet.id
     route_table_id = aws_route_table.default_table.id
@@ -69,7 +108,23 @@ resource "aws_route_table_association" "route_table_public" {
     ]
 }
 
+resource "aws_route_table_association" "route_table_public_2" {
+    subnet_id = aws_subnet.public_subnet_2.id
+    route_table_id = aws_route_table.default_table_2.id
+    depends_on = [
+      aws_route_table.default_table_2
+    ]
+}
+
 resource "aws_eip" "nat_ip" {
+    vpc = true
+
+    depends_on = [
+        aws_internet_gateway.gateway_teste
+    ]    
+}
+
+resource "aws_eip" "nat_ip_2" {
     vpc = true
 
     depends_on = [
@@ -83,6 +138,20 @@ resource "aws_nat_gateway" "nat_gateway" {
 
     tags = {
       Name = "nat-gateway"
+    }
+
+    depends_on = [
+      aws_subnet.public_subnet,
+      aws_eip.nat_ip
+    ]
+}
+
+resource "aws_nat_gateway" "nat_gateway_2" {
+    subnet_id = aws_subnet.public_subnet_2.id
+    allocation_id = aws_eip.nat_ip_2.id
+
+    tags = {
+      Name = "nat-gateway-2"
     }
 
     depends_on = [
@@ -114,6 +183,29 @@ resource "aws_route_table" "NAT_route" {
     ]
 }
 
+resource "aws_route_table" "NAT_route_2" {
+    vpc_id = aws_vpc.default_vpc.id
+
+    # route {
+    #     cidr_block = "10.41.0.0/16"
+    #     gateway_id = aws_nat_gateway.nat_gateway.id
+    # }
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        nat_gateway_id = aws_nat_gateway.nat_gateway_2.id
+    }
+
+    tags = {
+        Name = "NAT route table 2"
+    }
+
+    depends_on = [
+      aws_vpc.default_vpc,
+      aws_nat_gateway.nat_gateway_2
+    ]
+}
+
 resource "aws_route_table_association" "route_table_private" {
     subnet_id = aws_subnet.private_subnet.id
     route_table_id = aws_route_table.NAT_route.id
@@ -121,6 +213,16 @@ resource "aws_route_table_association" "route_table_private" {
     depends_on = [
       aws_subnet.private_subnet,
       aws_route_table.NAT_route
+    ]
+}
+
+resource "aws_route_table_association" "route_table_private_2" {
+    subnet_id = aws_subnet.private_subnet_2.id
+    route_table_id = aws_route_table.NAT_route_2.id
+
+    depends_on = [
+      aws_subnet.private_subnet_2,
+      aws_route_table.NAT_route_2
     ]
 }
 
@@ -230,8 +332,8 @@ resource "aws_network_interface" "apachewebserver_interface" {
 
 
 resource "aws_network_interface" "bastion_host_network" {
-    subnet_id = aws_subnet.public_subnet.id
-    private_ips = ["10.41.10.30"]
+    subnet_id = aws_subnet.public_subnet_2.id
+    private_ips = ["10.41.11.30"]
     security_groups = [ aws_security_group.sg_bastion_host.id ]
     depends_on = [
      aws_security_group.sg_bastion_host
@@ -307,7 +409,7 @@ resource "aws_instance" "vm_2" {
 
 resource "aws_db_subnet_group" "patrimonio_db_subnet_group" {
     name = "patrimonio_db_subnet_group" 
-    subnet_ids = [ aws_subnet.public_subnet.id, aws_subnet.private_subnet.id ]
+    subnet_ids = [ aws_subnet.private_subnet.id, aws_subnet.private_subnet_2.id ]
 
     tags = {
         Name = "Patrimonio DB Subnet group"
@@ -332,7 +434,6 @@ resource "aws_db_instance" "patrimonio_db" {
 
 resource "aws_s3_bucket" "patrimonio_s3_bucket" {
     bucket = "patrimonio-w1p30qp8y4iyn7cv"
-    acl = "public-read"
 }
 
 resource "aws_s3_bucket_policy" "patrimonio_s3_external_access_policy" {
@@ -340,10 +441,10 @@ resource "aws_s3_bucket_policy" "patrimonio_s3_external_access_policy" {
     policy = file("${path.module}/s3-public-bucket.json")
 }
 
-resource "aws_ami_from_instance" "webserver_ami" {
-    name = "webserver_ami"
-    source_instance_id = aws_instance.vm_2.id
-}
+# resource "aws_ami_from_instance" "webserver_ami" {
+#     name = "webserver_ami"
+#     source_instance_id = aws_instance.vm_2.id
+# }
 
 data "aws_instance" "webserver_instance" {
     instance_id = aws_instance.vm_2.id
