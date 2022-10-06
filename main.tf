@@ -441,11 +441,74 @@ resource "aws_s3_bucket_policy" "patrimonio_s3_external_access_policy" {
     policy = file("${path.module}/s3-public-bucket.json")
 }
 
-# resource "aws_ami_from_instance" "webserver_ami" {
-#     name = "webserver_ami"
-#     source_instance_id = aws_instance.vm_2.id
-# }
+resource "aws_ami_from_instance" "webserver_ami" {
+    name = "webserver_ami"
+    source_instance_id = aws_instance.vm_2.id
+    depends_on = [
+      aws_instance.vm_2
+    ]
+}
 
 data "aws_instance" "webserver_instance" {
     instance_id = aws_instance.vm_2.id
 }
+
+data "aws_ami" "webserver_ami_created" {
+    filter {
+      name = "name"
+      values = [ "webserver_ami" ]
+    }
+    depends_on = [
+      aws_ami_from_instance.webserver_ami
+    ]
+}
+
+resource "aws_launch_template" "webserver_template" {
+    image_id = aws_ami_from_instance.webserver_ami.id
+    instance_type = "t2.micro"
+    depends_on = [
+      data.aws_ami.webserver_ami_created
+    ]
+}
+
+# resource "aws_autoscaling_group" "webserver_scaling" {
+#     desired_capacity = 1
+#     max_size = 3
+#     min_size = 1
+
+#     vpc_zone_identifier = [ aws_subnet.private_subnet.id, aws_subnet.private_subnet_2.id ]
+
+#     launch_template {
+#       id = aws_launch_template.webserver_template.id
+#       version = "$Default"
+#     }
+# }
+
+# resource "aws_lb" "appbalancer00" {
+#     name = "balancer-00"  
+#     internal = false
+#     load_balancer_type = "application"
+#     subnets = [ aws_subnet.public_subnet.id, aws_subnet.public_subnet_2.id ]
+#     depends_on = [
+#       aws_autoscaling_group.webserver_scaling
+#     ]
+    
+# }
+
+# resource "aws_lb_target_group" "alb_port_80" {
+#   name     = "port-80-lb"
+#   port     = 80
+#   protocol = "HTTP"
+#   vpc_id   = aws_vpc.default_vpc.id
+# }
+
+# resource "aws_autoscaling_attachment" "balancer00_autoscaling" {
+#     autoscaling_group_name = aws_autoscaling_group.webserver_scaling.id
+#     alb_target_group_arn = aws_lb_target_group.alb_port_80.arn  
+
+#     #elb = aws_lb.appbalancer00.id
+#     depends_on = [
+#       aws_lb_target_group.alb_port_80,
+#       aws_autoscaling_group.webserver_scaling
+#     ]
+# }

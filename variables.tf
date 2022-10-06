@@ -2,6 +2,10 @@
 #     type = string
 # }
 
+# variable ami_webserver_id {
+#     type = string
+# }
+
 variable db {
     type = object({
         user = string,
